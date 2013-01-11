@@ -1,0 +1,51 @@
+# Installation run-time settings
+
+# Where to find the list of DSEE instances
+INSTANCE_FILE=${DSEE_CONFIG_DIR}/dsee-instances
+
+# Where to find the instance "cn=Directory Manager" password relative to
+# the instance path.
+INSTANCE_PW_FILE=.p
+
+# Instance backup directory relative to the instance path.
+BACKUPS_DIR_NAME=backups
+
+# How many instance backups to maintain.
+BACKUP_KEEP_COUNT=7
+
+# File to log dseeldapservices operations to. Relative to the instance path.
+SERVICES_LOG=logs/services
+
+
+#
+# Executable paths
+#
+
+# Path to the DSEE Directory Server administration executable.
+# Uncomment the next line to manage Directory Server instances.
+DSADM=${HOME}/Install/Oracle/DSEE/dsee7/bin/dsadm
+
+# Path to the DSEE Directory Server configuration executable.
+# Uncomment the next line to manage Directory Server instances.
+DSCONF=${HOME}/Install/Oracle/DSEE/dsee7/bin/dsconf
+
+# Path to the DSEE Directory Proxy administration executable.
+# Uncomment the next line to manage Directory Proxy instances.
+DPADM=${HOME}/Install/Oracle/DSEE/dsee7/bin/dpadm
+
+# Path to the DSEE Directory Proxy configuration executable.
+# Uncomment the next line to manage Directory Proxy instances.
+DPCONF=${HOME}/Install/Oracle/DSEE/dsee7/bin/dpconf
+
+# Path to the DSEE Common Agent executable.
+# Uncomment the next line to manage the Common Agent instance.
+CACAOADM=${HOME}/Install/Oracle/DSEE/dsee7/bin/cacaoadm
+
+# Path to the Tomcat statup executable.
+# Uncomment the next line to manage the Tomcat instance.
+TOMCAT_START=${HOME}/Install/Apache/Tomcat/tomcat-6/bin/startup.sh
+
+# Path to the Tomcat shutdown executable.
+# Uncomment the next line to manage The Tomcat instance.
+TOMCAT_STOP=${HOME}/Install/Apache/Tomcat/tomcat-6/bin/shutdown.sh
+

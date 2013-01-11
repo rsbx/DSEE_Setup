@@ -1,0 +1,20 @@
+#!/usr/bin/perl
+
+$l = "";
+
+while(<>)
+	{
+	chomp;
+	if (/^ /)
+		{
+		$l .= substr($_, 1);
+		next;
+		}
+	print $l, "\n";
+	$l = $_;
+	}
+
+if ($l)
+	{
+	print $l, "\n";
+	}

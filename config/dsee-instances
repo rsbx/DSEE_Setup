@@ -1,0 +1,16 @@
+# This file holds the DSEE instance information for DSEE
+# instances that are managed by the system init scripts.
+
+# Each managed instance is listed on a line starting with the instance
+# type, a ":" separator, the LDAP port number, a ":" separator, the
+# LDAPS port number, a ":" separator, and the instance path.
+#
+# Recognized instance types are "LDAP" and "PROXY" and case is not
+# significant when specifying the instance type.
+#
+# Leading and trailing whitespace is ignored in each of the fields.
+#
+# Instance paths SHOULD be absolute and MUST not end with a '/'.
+#
+
+LDAP:3998:3999:/home/ldapadmin/Install/Oracle/DSEE/dsee7/var/dcc/ads

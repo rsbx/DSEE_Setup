@@ -1,0 +1,29 @@
+The following is from the Sun Directory Server Enterprise Edition 7.0
+Administration Guide, chapter 8, Directory Server Backup and Restore.
+
+See scripts/dseeldapservices for automation of the backup process.
+
+
+Directory backup and restore variables:
+
+	# ${ARCHIVE_DIR} must exist, be empty, owned by ldapadmin.
+	# ${PORT} is the LDAP server service port, 1389.
+	# ${PASSWORD_FILE} is the path to a file containing just the
+	#	Directory Manager's password.
+	# ${INSTANCE_PATH} is the instance path of the directory server
+	#	instance.
+
+Backup a running directory server instance:
+
+	# The instance should be running.
+	dsconf backup -p ${PORT} -w ${PASSWORD_FILE} ${ARCHIVE_DIR}/db
+	( cd ${INSTANCE_PATH} && tar cf ${ARCHIVE_DIR}/config.tar config )
+
+Restore a directory server instance:
+
+	# The instance should already be created but not running.
+	rm -rf ${INSTANCE_PATH}/config_OLD
+	mv -f ${INSTANCE_PATH}/config ${INSTANCE_PATH}/config_OLD
+	( cd ${INSTANCE_PATH} && tar xpf ${ARCHIVE_DIR}/config.tar )
+	dsadm restore -i ${INSTANCE_PATH} ${ARCHIVE_DIR}/db
+

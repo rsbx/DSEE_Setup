@@ -1,0 +1,359 @@
+#!/bin/bash
+
+# Actual script for controlling the LDAP services
+
+# Configuration begin
+DSEE_CONFIG_DIR="${HOME}/config"
+DSEE_RUNTIME_SETTINGS="${DSEE_CONFIG_DIR}/dseeldapservices-settings"
+DSEE_SERVICES_LOG_DIR="${HOME}/logs"
+DSEE_SERVICES_LOG_FILE="${DSEE_SERVICES_LOG_DIR}/dseeservices"
+# Configuration end
+
+#DSEE_DEBUG=show_args
+
+
+CAT=cat
+TAC=tac
+LS=/bin/ls
+RM=/bin/rm
+WC=/usr/bin/wc
+SORT=/bin/sort
+HEAD=/usr/bin/head
+TAR=/bin/tar
+GREP=/bin/grep
+MKDIR=/bin/mkdir
+RMDIR=/bin/rmdir
+
+
+[ -r "${DSEE_RUNTIME_SETTINGS}" ] && . "${DSEE_RUNTIME_SETTINGS}"
+
+
+show_args () {
+	while [ "$#" -gt 0 ]; do
+		echo -n " \"$1\""
+		shift
+	done
+	echo ""
+	}
+
+
+log_instance_service () {
+	local OP="$1"
+	local DSEE_INSTANCE_PATH="$2"
+	local MESSAGE="$3"
+
+	touch "${DSEE_INSTANCE_PATH}/${SERVICES_LOG}" || return
+
+	echo "$(date): [${OP}] ${MESSAGE}" >> "${DSEE_INSTANCE_PATH}/${SERVICES_LOG}"
+	}
+
+
+instance_start_stop () {
+	local ACTION="$1"
+	local DSEE_TYPE="$2"
+	local DSEE_LDAP_PORT="$3"
+	local DSEE_LDAPS_PORT="$4"
+	local DSEE_INSTANCE_PATH="$5"
+
+	if [ ! -d "${DSEE_INSTANCE_PATH}" ]; then
+		RETVAL=1
+		return ${RETVAL:-0}
+	fi
+
+	log_instance_service "${ACTION}" "${DSEE_INSTANCE_PATH}" "Begin..."
+
+	case "$(echo "${DSEE_TYPE}" | tr '[a-z]' '[A-Z]' )" in
+		LDAP)
+			if [ -x "${DSADM}" ]; then
+				$DSEE_DEBUG "${DSADM}" "${ACTION}" "${DSEE_INSTANCE_PATH}"
+				RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+			fi
+			;;
+
+		PROXY)
+			if [ -x "${DPADM}" ]; then
+				$DSEE_DEBUG "${DPADM}" "${ACTION}" "${DSEE_INSTANCE_PATH}"
+				RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+			fi
+			;;
+
+		*)
+			;;
+	esac
+
+	log_instance_service "${ACTION}" "${DSEE_INSTANCE_PATH}" "Complete (${RETVAL:-0})"
+
+	return ${RETVAL:-0}
+	}
+
+
+instance_backup () {
+	local OP="backup"
+	local DSEE_TYPE="$1"
+	local DSEE_LDAP_PORT="$2"
+	local DSEE_LDAPS_PORT="$3"
+	local DSEE_INSTANCE_PATH="$4"
+
+	local DSEE_BACKUPS_DIR="${DSEE_INSTANCE_PATH}/${BACKUPS_DIR_NAME}"
+	local NOW=$(/bin/date -u '+%Y%m%d.%H%M%S-%Z')
+	local DSEE_CURRENT_BACKUP="${DSEE_BACKUPS_DIR}/${NOW}"
+	local DSEE_SERVICES_LOG="${DSEE_INSTANCE_PATH}/${SERVICES_LOG_FILE}"
+
+	if [ ! -d "${DSEE_INSTANCE_PATH}" ]; then
+		RETVAL=1
+		return ${RETVAL:-0}
+	fi
+
+	log_instance_service "${OP}" "${DSEE_INSTANCE_PATH}" "Begin..."
+
+	if [ ! -d "${DSEE_BACKUPS_DIR}/." ]; then
+		log_instance_service "${OP}" "${DSEE_INSTANCE_PATH}" \
+				"Aborting: Backups dir (${DSEE_BACKUPS_DIR}) not found"
+		RETVAL=1
+		return ${RETVAL:-0}
+	fi
+
+	if [ ! -r "${DSEE_INSTANCE_PATH}/${INSTANCE_PW_FILE}" ]; then
+		log_instance_service "${OP}" "${DSEE_INSTANCE_PATH}" \
+				"Aborting: Password file (${DSEE_INSTANCE_PATH}/${INSTANCE_PW_FILE}) not found"
+		RETVAL=1
+		return ${RETVAL:-0}
+	fi
+
+	$DSEE_DEBUG "${MKDIR}" -p "${DSEE_CURRENT_BACKUP}"
+
+	if [ -z "$DSEE_DEBUG" -a ! -d "${DSEE_CURRENT_BACKUP}" ]; then
+		RETVAL=1
+		return ${RETVAL:-0}
+	fi
+
+	[ -z "$DSEE_DEBUG" ] && touch "${DSEE_CURRENT_BACKUP}/log"
+	[ -z "$DSEE_DEBUG" ] && echo "$(date): Backup stating ..." >> "${DSEE_CURRENT_BACKUP}/log"
+
+	$DSEE_DEBUG "${DSCONF}" backup -c -i -p "${DSEE_LDAP_PORT}" \
+			-w "${DSEE_INSTANCE_PATH}/${INSTANCE_PW_FILE}" \
+			"${DSEE_CURRENT_BACKUP}/data" \
+			>> "${DSEE_CURRENT_BACKUP}/log" 2>&1
+	RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+
+	( $DSEE_DEBUG cd "${DSEE_INSTANCE_PATH}" \
+		&& $DSEE_DEBUG "${TAR}" cf "${DSEE_CURRENT_BACKUP}/config.tar" config/ ) >> "${DSEE_CURRENT_BACKUP}/log" 2>&1
+	RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+
+	[ -z "$DSEE_DEBUG" ] && echo "$(date): Backup completed (${RETV})" >> "${DSEE_CURRENT_BACKUP}/log"
+
+	log_instance_service "${OP}" "${DSEE_INSTANCE_PATH}" "Complete (${RETVAL:-0})"
+
+	return ${RETVAL:-0}
+	}
+
+
+instance_rotate_backup () {
+	local OP="backup_rotate"
+	local DSEE_TYPE="$1"
+	local DSEE_LDAP_PORT="$2"
+	local DSEE_LDAPS_PORT="$3"
+	local DSEE_INSTANCE_PATH="$4"
+
+	local DSEE_BACKUPS_DIR="${DSEE_INSTANCE_PATH}/${BACKUPS_DIR_NAME}"
+	local DSEE_SERVICES_LOG="${DSEE_INSTANCE_PATH}/${SERVICES_LOG_FILE}"
+
+	if [ ! -d "${DSEE_INSTANCE_PATH}/." ]; then
+		RETVAL=1
+		return ${RETVAL:-0}
+	fi
+
+	log_instance_service "${OP}" "${DSEE_INSTANCE_PATH}" "Begin..."
+
+	if [ ! -d "${DSEE_BACKUPS_DIR}/." ]; then
+		log_instance_service "${OP}" "${DSEE_INSTANCE_PATH}" \
+				"Aborting: Backups dir (${DSEE_BACKUPS_DIR}) not found"
+		RETVAL=1
+		return ${RETVAL:-0}
+	fi
+
+	local COUNT=$("${LS}" "${DSEE_BACKUPS_DIR}/." | "${WC}" -l)
+
+	if [ "${COUNT}" -gt "${BACKUP_KEEP_COUNT}" ]; then
+		local DEL_COUNT=$(expr ${COUNT} - ${BACKUP_KEEP_COUNT})
+
+		for DIR in $("${LS}" "${DSEE_BACKUPS_DIR}/." | "${SORT}" \
+				| "${HEAD}" "-${DEL_COUNT}") ; do
+			$DSEE_DEBUG "${RM}" -rf "${DSEE_BACKUPS_DIR}/${DIR}"
+			RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+		done
+	fi
+
+	log_instance_service "${OP}" "${DSEE_INSTANCE_PATH}" "Complete (${RETVAL:-0})"
+
+	return ${RETVAL:-0}
+	}
+
+
+start_stop_loop () {
+	local IFS="${IFS}:"
+
+	while read itype ilport isport ipath ; do
+		instance_start_stop "$1" "${itype}" "${ilport}" "${isport}" \
+				"${ipath}"
+		RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+	done
+
+	return ${RETVAL:-0}
+	}
+
+
+backup_loop () {
+	local IFS="${IFS}:"
+
+	while read itype ilport isport ipath ; do
+		instance_backup "${itype}" "${ilport}" "${isport}" "${ipath}"
+		RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+	done
+
+	return ${RETVAL:-0}
+	}
+
+
+backup_rotate_loop () {
+	local IFS="${IFS}:"
+
+	while read itype ilport isport ipath ; do
+		instance_rotate_backup "${itype}" "${ilport}" "${isport}" \
+				"${ipath}"
+		RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+	done
+
+	return ${RETVAL:-0}
+	}
+
+
+start () {
+	if [ -r "${INSTANCE_FILE}" ]; then
+		${CAT} "${INSTANCE_FILE}" /dev/null \
+			| "${GREP}" -Ei '^[:space:]*(LDAP|PROXY)[:space:]*:' \
+		| start_stop_loop start
+		RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+	fi
+
+	if [ -x "${CACAOADM}" ]; then
+		$DSEE_DEBUG "${CACAOADM}" start
+		RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+		echo ""
+	fi
+
+	if [ -x "${TOMCAT_START}" ]; then
+		$DSEE_DEBUG "${TOMCAT_START}"
+		RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+		echo ""
+	fi
+
+	return ${RETVAL:-0}
+	}
+
+
+stop () {
+	if [ -x "${TOMCAT_STOP}" ]; then
+		$DSEE_DEBUG "${TOMCAT_STOP}"
+		RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+		echo ""
+	fi
+
+	if [ -x "${CACAOADM}" ]; then
+		$DSEE_DEBUG "${CACAOADM}" stop
+		RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+		echo ""
+	fi
+
+	if [ -r "${INSTANCE_FILE}" ]; then
+		${TAC} "${INSTANCE_FILE}" /dev/null \
+			| "${GREP}" -Ei '^[:space:]*(LDAP|PROXY)[:space:]*:' \
+		| start_stop_loop stop
+		RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+	fi
+
+	return ${RETVAL:-0}
+	}
+
+
+status () {
+	if [ -r "${INSTANCE_FILE}" ]; then
+		${CAT} "${INSTANCE_FILE}" /dev/null \
+			| "${GREP}" -Ei '^[:space:]*(LDAP|PROXY)[:space:]*:' \
+		| start_stop_loop info
+		RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+	fi
+
+	if [ -x "${CACAOADM}" ]; then
+		$DSEE_DEBUG "${CACAOADM}" status
+		RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+		echo ""
+	fi
+
+	#
+	# There is no good way to check the status of the Tomcat instance
+	# managed by this script.
+	#
+	return ${RETVAL:-0}
+	}
+
+
+backup () {
+	if [ -r "${INSTANCE_FILE}" ]; then
+		${CAT} "${INSTANCE_FILE}" /dev/null \
+			| "${GREP}" -Ei '^[:space:]*(LDAP)[:space:]*:' \
+		| backup_loop
+		RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+	fi
+
+	return ${RETVAL:-0}
+	}
+
+
+backup_rotate () {
+	if [ -r "${INSTANCE_FILE}" ]; then
+		${CAT} "${INSTANCE_FILE}" /dev/null \
+			| "${GREP}" -Ei '^[:space:]*(LDAP)[:space:]*:' \
+		| backup_rotate_loop
+		RETV=$? ; [ ${RETV} -ne 0 ] && RETVAL=${RETV}
+	fi
+
+	return ${RETVAL:-0}
+	}
+
+
+"${MKDIR}" -p "${DSEE_SERVICES_LOG_DIR}"
+touch "${DSEE_SERVICES_LOG_FILE}"
+
+echo "$(date) [start] $0 $@" >> "${DSEE_SERVICES_LOG_FILE}"
+
+case "$1" in
+	start)
+		start
+		;;
+
+	stop)
+		stop
+		;;
+
+	status)
+		status
+		;;
+
+	prebackup)
+		backup
+		;;
+
+	postbackup)
+		backup_rotate
+		;;
+
+	*)
+		echo "Usage: $0 {start|stop|status|prebackup|postbackup}"
+		RETVAL=2
+		;;
+esac
+
+echo "$(date) [RET=${RETVAL:-0}] $0 $@" >> "${DSEE_SERVICES_LOG_FILE}"
+
+exit ${RETVAL:-0}

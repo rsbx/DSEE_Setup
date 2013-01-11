@@ -1,0 +1,3 @@
+#!/bin/sh
+
+sed -e 's/^		*//' | _ldif-unwrap_ | _ldif-format_

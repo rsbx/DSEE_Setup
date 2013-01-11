@@ -1,0 +1,61 @@
+#!/usr/bin/perl
+
+@o = ();
+@a = ();
+$d = undef;
+
+while(<>)
+	{
+	chomp;
+	if (/^$/)
+		{
+		if ($d)
+			{
+			print "$d\n";
+			if (@o)
+				{
+				print "\t", join("\n\t", sort @o), "\n";
+				}
+			if (@a)
+				{
+				print "\t\t", join("\n\t\t", sort @a), "\n";
+				}
+			print "\n";
+			$d = undef;
+			@o = ();
+			@a = ();
+			}
+		}
+	else
+		{
+		if (/^dn:/)
+			{
+			$d = $_;
+			next;
+			}
+		if (/^objectClass:/)
+			{
+			push @o, $_;
+			next;
+			}
+		push @a, $_;
+		}
+	}
+
+if ($d)
+	{
+	print "$d\n";
+	if (@o)
+		{
+		print "\t", join("\n\t", sort @o), "\n";
+		}
+	if (@a)
+		{
+		print "\t\t", join("\n\t\t", sort @a), "\n";
+		}
+	print "\n";
+	$d = undef;
+	@o = ();
+	@a = ();
+	}
+

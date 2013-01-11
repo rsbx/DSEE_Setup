@@ -1,0 +1,26 @@
+# Helper script for the base RHEL cleanup
+
+chkconfig --levels 2345 autofs off
+chkconfig --levels 2345 avahi-daemon off
+chkconfig --levels 2345 bluetooth off
+chkconfig --levels 2345 cups off
+chkconfig --levels 2345 hidd off
+chkconfig --levels 2345 hplip off
+chkconfig --levels 2345 isdn off
+#chkconfig --levels 2345 kudzu off
+chkconfig --levels 2345 netfs off
+chkconfig --levels 2345 nfs off
+chkconfig --levels 2345 nfslock off
+chkconfig --levels 2345 pcscd off
+chkconfig --levels 2345 portmap off
+chkconfig --levels 2345 rpcgssd off
+chkconfig --levels 2345 rpcidmapd off
+chkconfig --levels 2345 rpcsvcgssd off
+#chkconfig --levels 2345 sendmail off
+chkconfig --levels 2345 xfs off
+chkconfig --levels 2345 gpm off
+chkconfig --levels 2345 lvm2-monitor off
+chkconfig --levels 2345 mdmonitor off
+chkconfig --levels  345 ntpd on
+chkconfig --levels 2345 iptables on
+chkconfig --levels 2345 ip6tables on

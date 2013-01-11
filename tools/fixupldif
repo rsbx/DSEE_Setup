@@ -1,0 +1,9 @@
+#!/bin/sh
+
+sed -e 's/^		*//' \
+		| _ldif-unwrap_ \
+		| grep -Eiv '^(modify|create)timestamp:' \
+		| grep -Eiv '^nsslapd-plugin(version|path):' \
+		| grep -Eiv '^(creators|modifiers)Name:' \
+		| grep -Eiv '^(nsState:|numSubordinates|nsds50ruv|ds6ruv):' \
+		| grep -Eiv '^(nsslapd-db-home-directory|nsslapd-db-logdirectory|nsslapd-directory|nsDS5ReplicaName):'

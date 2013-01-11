@@ -1,0 +1,183 @@
+Notes for managing network firewall rules. Assumes that the LDAP services
+use non-privileged ports and that the standard LDAP ports are redirected
+on the LDAP servers. LDAP clients are expected to use the standard LDAP
+ports.
+
+
+DSCC servers -> DSCC servers:
+	The following TCP ports need to be open on the destination:
+	3998	# DSCC Registry server instance & replication
+	3999	# DSCC Registry server instance & replication
+	11162	# "Common Agent" communication port
+	8080	# Web interface to DSCC
+	22	# ssh for configuration, maintenance & trouble shooting
+
+DSCC servers -> LDAP & Proxy servers:
+	The following TCP ports need to be open on the destination:
+	11162	# "Common Agent" communication port for management functions
+	1389	# LDAP service
+	1636	# LDAP service
+	389	# LDAP service
+	636	# LDAP service
+	22	# ssh for configuration, maintenance & trouble shooting
+
+LDAP & Proxy servers -> DSCC servers:
+	The following TCP ports need to be open on the destination:
+	11162	# "Common Agent" communication port for management registration
+	3998	# DSCC Registry server service
+	3999	# DSCC Registry server service
+	22	# ssh for configuration, maintenance & trouble shooting
+
+LDAP & Proxy servers -> LDAP & Proxy servers:
+	The following TCP ports need to be open on the destination:
+	11162	# "Common Agent" communication port for replication registration
+	1389	# LDAP service & replication
+	1636	# LDAP service & replication
+	389	# LDAP service & replication
+	636	# LDAP service & replication
+	22	# ssh for configuration, maintenance & trouble shooting
+
+LDAP clients -> LDAP & Proxy servers:
+	The following TCP ports need to be open on the destination:
+	389	# LDAP service
+	636	# LDAP service
+
+LDAP administration staff -> DSCC servers
+	The following TCP ports need to be open on the destination:
+	3998
+	3999
+	11162
+	8080
+	22
+
+LDAP adminstration staff -> LDAP & Proxy servers
+	The following TCP ports need to be open on the destination:
+	11162
+	1389
+	1636
+	389
+	636
+	22
+
+
+Creating server and port groups in the firewall rules can simplify
+maintenance and documentation of the rules.
+
+Server Groups:
+	LDAP_servers_DC1:
+	LDAP_dscc_DC1:
+
+	LDAP_servers_DC2:
+	LDAP_dscc_DC2:
+
+	LDAP_clients:
+
+	LDAP_adminstaff:
+
+
+Port Groups:
+	SSH:
+		TCP	22
+
+	LDAP_service:
+		TCP	1389
+		TCP	1636
+
+	LDAP_client_service:
+		TCP	389
+		TCP	636
+
+	LDAP_common_agent:
+		TCP	11162
+
+	LDAP_console_service:
+		TCP	8080
+
+	LDAP_console_registry:
+		TCP	3998
+		TCP	3999
+
+
+Rules for the LDAP environemnt (assumes DENY is the default):
+
+	FROM			TO			ALLOW
+	======================	======================	=================
+	LDAP_servers_DC1	LDAP_servers_DC1	SSH
+							LDAP_common_agent
+							LDAP_service
+							LDAP_client_service
+	LDAP_servers_DC1	LDAP_servers_DC2	SSH
+							LDAP_common_agent
+							LDAP_service
+							LDAP_client_service
+	LDAP_servers_DC2	LDAP_servers_DC1	SSH
+							LDAP_common_agent
+							LDAP_service
+							LDAP_client_service
+	LDAP_servers_DC2	LDAP_servers_DC2	SSH
+							LDAP_common_agent
+							LDAP_service
+							LDAP_client_service
+
+	LDAP_dscc_DC1		LDAP_dscc_DC1		SSH
+							LDAP_common_agent
+							LDAP_console_registry
+	LDAP_dscc_DC1		LDAP_dscc_DC2		SSH
+							LDAP_common_agent
+							LDAP_console_registry
+	LDAP_dscc_DC2		LDAP_dscc_DC1		SSH
+							LDAP_common_agent
+							LDAP_console_registry
+	LDAP_dscc_DC2		LDAP_dscc_DC2		SSH
+							LDAP_common_agent
+							LDAP_console_registry
+
+	LDAP_dscc_DC1		LDAP_servers_DC1	SSH
+							LDAP_common_agent
+							LDAP_service
+							LDAP_client_service
+	LDAP_dscc_DC1		LDAP_servers_DC2	SSH
+							LDAP_common_agent
+							LDAP_service
+							LDAP_client_service
+	LDAP_dscc_DC2		LDAP_servers_DC1	SSH
+							LDAP_common_agent
+							LDAP_service
+							LDAP_client_service
+	LDAP_dscc_DC2		LDAP_servers_DC2	SSH
+							LDAP_common_agent
+							LDAP_service
+							LDAP_client_service
+
+	LDAP_servers_DC1	LDAP_dscc_DC1		SSH
+							LDAP_common_agent
+							LDAP_console_registry
+	LDAP_servers_DC1	LDAP_dscc_DC2		SSH
+							LDAP_common_agent
+							LDAP_console_registry
+	LDAP_servers_DC2	LDAP_dscc_DC1		SSH
+							LDAP_common_agent
+							LDAP_console_registry
+	LDAP_servers_DC2	LDAP_dscc_DC2		SSH
+							LDAP_common_agent
+							LDAP_console_registry
+
+
+	LDAP_clients		LDAP_servers_DC1	LDAP_client_service
+	LDAP_clients		LDAP_servers_DC2	LDAP_client_service
+
+
+	LDAP_adminstaff		LDAP_servers_DC1	SSH
+							LDAP_service
+							LDAP_client_service
+	LDAP_adminstaff		LDAP_servers_DC2	SSH
+							LDAP_service
+							LDAP_client_service
+
+	LDAP_adminstaff		LDAP_dscc_DC1		SSH
+							LDAP_console_registry
+							LDAP_console_service
+	LDAP_adminstaff		LDAP_dscc_DC2		SSH
+							LDAP_console_registry
+							LDAP_console_service
+

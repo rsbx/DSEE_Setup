@@ -1,0 +1,83 @@
+RHEL 5.5 server fixups
+======================
+What follows is the cleanups from a "base" RHEL 5.5 install on VMware; YMMV.
+See anaconda-ks.cfg for the definition of what the "base" install is.
+
+Also required is a Java runtime environment; jre-6u23-linux-i586.rpm was used
+for the installation documented here.
+
+
+The following services that default to ON _should_ be disabled on the LDAP
+servers:
+
+	autofs
+	avahi-daemon
+	bluetooth
+	cups
+	hidd
+	hplip
+	isdn
+	kudzu
+	netfs
+	nfs
+	nfslock
+	pcscd
+	portmap
+	sendmail
+	rpcgssd
+	rpcidmapd
+	rpcsvcgssd
+	xfs
+
+The following services that default to ON _can_ be disabled on the LDAP
+servers is not requred by the server configuration:
+
+	gpm
+	lvm2-monitor
+	mdmonitor
+
+The following services that default to OFF _need_ to be enabled and properly
+configured for the server environment the LDAP server will operate in:
+
+	ntpd
+	iptables
+	ip6tables
+
+This has been tested in a VirtualBox environment enabling system level
+security, via the "system-config-security" command, with SELinux set to
+"Enforcing" and only the SSH, NTP and the following LDAP related ports
+permitted:
+
+	389	LDAP		LDAP & LDAP Proxy servers only
+	1389	LDAP		LDAP & LDAP Proxy servers only
+	636	LDAPS		LDAP & LDAP Proxy servers only
+	1636	LDAPS		LDAP & LDAP Proxy servers only
+	11162	Common Agent	All LDAP related servers
+	8080	Tomcat		DSCC servers only
+	3998	LDAP		DSCC servers only
+	3999	LDAPS		DSCC servers only
+	22	SSH		All LDAP related servers
+	123	NTP		All LDAP related servers
+
+Port Redirection setup:
+        iptables -t nat -A OUTPUT -d localhost -p tcp --dport 389 \
+                        -j REDIRECT --to-ports 1389
+        iptables -t nat -A OUTPUT -d $(hostname) -p tcp --dport 389 \
+                        -j REDIRECT --to-ports 1389
+        iptables -t nat -A PREROUTING -d $(hostname) -p tcp --dport 389 \
+                        -j REDIRECT --to-ports 1389
+        iptables -t nat -A OUTPUT -d localhost -p tcp --dport 636 \
+                        -j REDIRECT --to-ports 1636
+        iptables -t nat -A OUTPUT -d $(hostname) -p tcp --dport 636 \
+                        -j REDIRECT --to-ports 1636
+        iptables -t nat -A PREROUTING -d $(hostname) -p tcp --dport 636 \
+                        -j REDIRECT --to-ports 1636
+        /etc/init.d/iptables save
+
+	Warning: The above port redirection rules will be lost whenever the
+	system-config-security command is run to modify the server firewall
+	rules.
+
+	OPTIONAL: REDIRECT port 80 to port 8080 to make the console easier
+	to use.
+

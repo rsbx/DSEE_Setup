@@ -1,0 +1,177 @@
+Sun/Oracle Directory Server Enterprise Edition (DSEE) version 7 install.
+Also applies to Oracle Directory Server Enterprise Edition (DSEE) version
+11.1.1.3.0.
+
+
+Assumes that installation host is an up to date RHEL 5.x x86_64 host with the
+cleanups document elsewhere.
+
+The following is to be performed logged in to the account that own the LDAP
+server executables, data, and processes.
+
+
+Add bin directories to shell defaut PATH environment variable.
+	# Edit ~/.bash_profile to add the following somewhere before the
+	# 'export PATH' line:
+	#	PATH=$PATH:$HOME/bin:$HOME/Install/Oracle/DSEE/dsee7/bin
+
+
+Install Oracle Directory Server Enterprise Edition 7:
+	cd
+	mkdir -p downloads
+	cd downloads
+	# Download Oracle Directory Server zip file here
+	cd
+	# The following is mostly from 820-4807.pdf
+	# install-path is ~/Install/Oracle/DSEE
+	mkdir -p Install/Oracle/DSEE
+	mkdir dsee_install_temp
+	cd dsee_install_temp
+	unzip -qq ~/downloads/<name of Oracle DSEE zip file>
+	cd ODSEE_ZIP_Distribution
+	# Or whatever it's called
+	unzip -qq <name of zip file> -d ~/Install/Oracle/DSEE
+	cd
+	rm -rf dsee_install_temp
+	# The following will create the path prefixes for future instances.
+	# Place all instances created there.
+	mkdir -p Instances/DSEE/dsee7/ds
+	mkdir -p Instances/DSEE/dsee7/dp
+
+
+Install current Apache Tomcat 6:
+	cd
+	mkdir -p downloads
+	cd downloads
+	# Download Apache Tomcat 6 tar file here
+	cd
+	mkdir -p Install/Apache/Tomcat
+	cd Install/Apache/Tomcat
+	tar xfz ~/downloads/<name of Apache Tomcat 6 tar file>
+	# Create the appropriate symlinks. Each symlink should link to the
+	# most appropriate Apache Tomcat version for that symlink name.
+	# ln -s apache-tomcat-6.0.30 tomcat
+	# ln -s apache-tomcat-6.0.30 tomcat-6
+	# ln -s apache-tomcat-6.0.30 tomcat-6.0
+	# ln -s apache-tomcat-6.0.30 tomcat-6.0.30
+
+
+Tomcat 6 basic setup:
+	cd
+	cd Install/Apache/Tomcat/tomcat-6
+	cat <<eof >bin/setenv.sh
+	> JRE_HOME=~/Install/Oracle/DSEE/dsee7/jre
+	> CATALINA_OPTS="-Djava.awt.headless=true"
+	> eof
+	rm -rf webapps/{docs,examples,host-manager,manager}
+	# Test the basic Tomcat 6 server setup
+	netstat -tln
+	# Insure that nothing is listening on ports 8080,8009,8005.
+	bin/startup.sh
+	sleep 5
+	netstat -tln
+	# Insure that something is listening on ports 8080,8009,8005.
+	# With a browser, go to http://<hostname>:8080
+	# If the Tomcat server is workingyou should see the default page as
+	# distributed by the Apache Software Foundation.
+	bin/shutdown.sh
+	sleep 5
+	netstat -tln
+	# Insure that nothing is listening on ports 8080,8009,8005.
+	# Add the following to the tomcat-6/conf/web.xml in the jsp servlet
+	# configuration settings section.
+	# <init-param>
+	#     <param-name>enablePooling</param-name>
+	#     <param-value>false</param-value>
+	# </init-param>
+	# Test the basic Tomcat 6 server setup again.
+	netstat -tln
+	# Insure that nothing is listening on ports 8080,8009,8005.
+	bin/startup.sh
+	sleep 5
+	netstat -tln
+	# Insure that something is listening on ports 8080,8009,8005.
+	# With a browser, go to http://<hostname>:8080
+	# If the Tomcat server is workingyou should see the default page as
+	# distributed by the Apache Software Foundation.
+	bin/shutdown.sh
+	sleep 5
+	netstat -tln
+	# Insure that nothing is listening on ports 8080,8009,8005.
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	STOP HERE.
+	HAVE THE ADMIN GROUP SHUT DOWN THE SYSTEM CLEANLY.
+	HAVE THE ADMIN GROUP TAKE A SNAPSHOT OF THE VMWARE INSTANCE.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+Cacaoadm agent setup (required on all servers for console management):
+	cd
+	Install/Oracle/DSEE/dsee7/bin/dsccsetup cacao-reg
+	# Fixup cacao port numbers to be the defaults
+	Install/Oracle/DSEE/dsee7/bin/cacaoadm stop
+	Install/Oracle/DSEE/dsee7/bin/cacaoadm set-param \
+			snmp-adaptor-port=11161
+	Install/Oracle/DSEE/dsee7/bin/cacaoadm set-param \
+			snmp-adaptor-trap-port=11162
+	Install/Oracle/DSEE/dsee7/bin/cacaoadm set-param \
+			jmxmp-connector-port=11162
+	Install/Oracle/DSEE/dsee7/bin/cacaoadm set-param \
+			commandstream-adaptor-port=11163
+	Install/Oracle/DSEE/dsee7/bin/cacaoadm set-param \
+			rmi-registry-port=11164
+	Install/Oracle/DSEE/dsee7/bin/cacaoadm set-param \
+			secure-webserver-port=11165
+	Install/Oracle/DSEE/dsee7/bin/cacaoadm start
+	# End cacao port number fixups
+
+
+DSCC setup:
+	cd
+	Install/Oracle/DSEE/dsee7/bin/dsccsetup war-file-create
+	# Make note of where the file was created.
+	Install/Oracle/DSEE/dsee7/bin/dsccsetup ads-create
+	# The password will be required to login to the DSCC.
+	mkdir Install/Apache/Tomcat/tomcat-6/webapps/dscc7
+	unzip -qq Install/Oracle/DSEE/dsee7/var/dscc7.war \
+			-d Install/Apache/Tomcat/tomcat-6/webapps/dscc7
+	Install/Apache/Tomcat/tomcat-6/bin/startup.sh
+	# With a browser, go to http://<hostname>:8080
+	# If the Tomcat server is working, you should see the default page as
+	# distributed by the Apache Software Foundation.
+	# With the browser, got to http://<hostname>:8080/dscc7
+	# If things are working, you should the "Directory Server Manager
+	# Authentication" page. Use the password provided to the 'dsccsetup
+	# ads-create' command.
+
+
+############################################################################
+# Cheat sheets:
+#	The following is the proper way to start and stop individual
+#	instances. The dseeldapservices script can be used to start
+#	and stop all (configured) instances on a server.
+
+DSCC Services shutdown:
+	~/Install/Apache/Tomcat/tomcat-6/bin/shutdown.sh
+	~/Install/Oracle/DSEE/dsee7/bin/cacaoadm stop
+	~/Install/Oracle/DSEE/dsee7/bin/dsadm stop \
+			Install/Oracle/DSEE/dsee7/var/dcc/ads
+
+DSCC Services startup:
+	~/Install/Oracle/DSEE/dsee7/bin/dsadm start \
+			Install/Oracle/DSEE/dsee7/var/dcc/ads
+	~/Install/Oracle/DSEE/dsee7/bin/cacaoadm start
+	~/Install/Apache/Tomcat/tomcat-6/bin/startup.sh
+
+DS Services startup:
+	~/Install/Oracle/DSEE/dsee7/bin/dsadm start \
+			Instances/DSEE/dsee7/ds/XX
+	~/Install/Oracle/DSEE/dsee7/bin/cacaoadm start
+
+DS Services shutdown:
+	~/Install/Oracle/DSEE/dsee7/bin/cacaoadm stop
+	~/Install/Oracle/DSEE/dsee7/bin/dsadm stop \
+			Instances/DSEE/dsee7/ds/XX
+

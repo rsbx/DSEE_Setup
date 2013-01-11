@@ -1,0 +1,51 @@
+#!/bin/sh
+#
+# DSEE LDAP services
+#
+# chkconfig: 345 90 10
+# description: DSEE 7.0 LDAP services
+#
+
+SUBSYS_NAME=dseeldapservices
+
+[ -z "${SUBSYS_NAME}" ] && exit 2
+
+
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#	SETTINGS
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+# Account that owns the executables, processes, and data
+DSEE_OWNER=ldapadmin
+
+# Where to find the script that actually does the work
+DSEE_SCRIPT_DIR=~ldapadmin/scripts
+DSEE_SCRIPT_NAME=${DSEE_SCRIPT_DIR}/dseeldapservices
+
+# End of SETTINGS
+
+
+SU=/bin/su
+
+RETVAL=0
+
+[ -f "${DSEE_SCRIPT_NAME}" ] || exit 1
+
+${SU} -l ${DSEE_OWNER} -c "${DSEE_SCRIPT_NAME} $1"
+RETVAL=$?
+
+case "$1" in
+	start)
+		touch "/var/lock/subsys/${SUBSYS_NAME}"
+		;;
+
+	restart)
+		touch "/var/lock/subsys/${SUBSYS_NAME}"
+		;;
+
+	stop)
+		rm -f "/var/lock/subsys/${SUBSYS_NAME}"
+		;;
+esac
+
+exit ${RETVAL}

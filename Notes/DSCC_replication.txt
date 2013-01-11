@@ -1,0 +1,18 @@
+# To enable multi-master replication of backing LDAP server instances
+# of the Directory Services Console and thereby get redundant consoles,
+# use the following as a template.
+
+
+dsconf enable-repl		-h dscc0 -p 3998 -d 1 master cn=dscc
+dsconf enable-repl		-h dscc1 -p 3998 -d 2 master cn=dscc
+
+dsconf create-repl-agmt		-h dscc0 -p 3998 cn=dscc dscc1:3998
+dsconf show-repl-agmt-status	-h dscc0 -p 3998 cn=dscc dscc1:3998
+dsconf init-repl-dest		-h dscc0 -p 3998 cn=dscc dscc1:3998
+dsconf show-repl-agmt-status	-h dscc0 -p 3998 cn=dscc dscc1:3998
+
+dsconf create-repl-agmt		-h dscc1 -p 3998 cn=dscc dscc0:3998
+dsconf show-repl-agmt-status	-h dscc1 -p 3998 cn=dscc dscc0:3998
+dsconf init-repl-dest		-h dscc1 -p 3998 cn=dscc dscc0:3998
+dsconf show-repl-agmt-status	-h dscc1 -p 3998 cn=dscc dscc0:3998
+
